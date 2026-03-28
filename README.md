@@ -1,7 +1,7 @@
 # maze-gen
-Generate random mazes using recursive backtracking. Zero dependencies.
+Random maze generator with Unicode rendering. Zero dependencies.
 ## Usage
-```
-python3 maze_gen.py 15 10
-python3 maze_gen.py 20 --seed 42
+```bash
+python3 maze_gen.py -W 15 -H 10
+python3 maze_gen.py --seed 42
 ```
