@@ -1,11 +1,11 @@
 # maze-gen
 
-Generate and solve mazes using recursive backtracking
+Generate and solve random mazes.
+
+Zero dependencies. Python 3.8+.
 
 ## Usage
 
 ```bash
 python3 maze_gen.py --help
 ```
-
-Zero dependencies. Python 3.8+.

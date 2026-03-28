@@ -1,64 +1,56 @@
 #!/usr/bin/env python3
-"""maze_gen - Generate and solve mazes."""
-import argparse, random, sys
-from collections import deque
-
+"""maze_gen - Generate and solve random mazes using DFS."""
+import sys, random
 def generate(w, h, seed=None):
-    if seed is not None: random.seed(seed)
-    grid = [[0]*w for _ in range(h)]
-    visited = [[False]*w for _ in range(h)]
-    dirs = [(0,-1,1),(0,1,4),(1,0,8),(-1,0,2)]  # dx,dy,wall
-    opp = {1:4,4:1,8:2,2:8}
-    def dfs(x, y):
-        visited[y][x] = True
-        random.shuffle(dirs)
-        for dx, dy, wall in dirs:
-            nx, ny = x+dx, y+dy
-            if 0<=nx<w and 0<=ny<h and not visited[ny][nx]:
-                grid[y][x] |= wall
-                grid[ny][nx] |= opp[wall]
-                dfs(nx, ny)
-    dfs(0, 0)
-    return grid
-
-def render(grid, w, h, path=None):
-    path_set = set(path) if path else set()
-    lines = []
-    for y in range(h):
-        top = ""; mid = ""
-        for x in range(w):
-            top += "+" + ("   " if grid[y][x] & 1 else "---")
-            ch = " * " if (x,y) in path_set else "   "
-            mid += ((" " if grid[y][x] & 2 else "|") + ch)
-        top += "+"; mid += "|"
-        lines.extend([top, mid])
-    lines.append("+" + "---+" * w)
-    return "\n".join(lines)
-
-def solve(grid, w, h):
-    q = deque([(0,0,[(0,0)])])
-    visited = {(0,0)}
-    dirs = [(0,-1,1),(0,1,4),(1,0,8),(-1,0,2)]
-    while q:
-        x, y, path = q.popleft()
-        if x == w-1 and y == h-1: return path
-        for dx, dy, wall in dirs:
-            if grid[y][x] & wall:
-                nx, ny = x+dx, y+dy
-                if (nx,ny) not in visited:
-                    visited.add((nx,ny))
-                    q.append((nx,ny,path+[(nx,ny)]))
-    return []
-
-def main():
-    p = argparse.ArgumentParser(description="Maze generator & solver")
-    p.add_argument("-W","--width",type=int,default=15)
-    p.add_argument("-H","--height",type=int,default=10)
-    p.add_argument("-s","--seed",type=int)
-    p.add_argument("--solve",action="store_true")
-    a = p.parse_args()
-    grid = generate(a.width, a.height, a.seed)
-    path = solve(grid, a.width, a.height) if a.solve else None
-    print(render(grid, a.width, a.height, path))
-
-if __name__ == "__main__": main()
+    if seed: random.seed(seed)
+    maze = [[1]*(2*w+1) for _ in range(2*h+1)]
+    for r in range(h):
+        for c in range(w): maze[2*r+1][2*c+1] = 0
+    visited = set(); stack = [(0, 0)]; visited.add((0, 0))
+    while stack:
+        r, c = stack[-1]
+        neighbors = []
+        for dr, dc in [(-1,0),(1,0),(0,-1),(0,1)]:
+            nr, nc = r+dr, c+dc
+            if 0 <= nr < h and 0 <= nc < w and (nr, nc) not in visited:
+                neighbors.append((nr, nc, dr, dc))
+        if neighbors:
+            nr, nc, dr, dc = random.choice(neighbors)
+            maze[2*r+1+dr][2*c+1+dc] = 0
+            visited.add((nr, nc)); stack.append((nr, nc))
+        else: stack.pop()
+    maze[1][0] = 0; maze[2*h-1][2*w] = 0
+    return maze
+def solve(maze):
+    h, w = len(maze), len(maze[0])
+    start = (1, 0); end = (h-2, w-1)
+    visited = set(); stack = [start]; parent = {}
+    while stack:
+        r, c = stack.pop()
+        if (r, c) == end:
+            path = set()
+            while (r, c) in parent: path.add((r, c)); r, c = parent[(r, c)]
+            path.add(start); return path
+        if (r, c) in visited: continue
+        visited.add((r, c))
+        for dr, dc in [(-1,0),(1,0),(0,-1),(0,1)]:
+            nr, nc = r+dr, c+dc
+            if 0 <= nr < h and 0 <= nc < w and maze[nr][nc] == 0 and (nr, nc) not in visited:
+                parent[(nr, nc)] = (r, c); stack.append((nr, nc))
+    return set()
+def display(maze, path=None):
+    for r, row in enumerate(maze):
+        line = ""
+        for c, cell in enumerate(row):
+            if path and (r, c) in path: line += "·"
+            elif cell == 1: line += "█"
+            else: line += " "
+        print(line)
+if __name__ == "__main__":
+    w = int(sys.argv[1]) if len(sys.argv) > 1 else 15
+    h = int(sys.argv[2]) if len(sys.argv) > 2 else 10
+    seed = int(sys.argv[3]) if len(sys.argv) > 3 else None
+    maze = generate(w, h, seed)
+    show_solution = "--solve" in sys.argv
+    path = solve(maze) if show_solution else None
+    display(maze, path)
