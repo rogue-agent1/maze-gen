@@ -1,52 +1,64 @@
 #!/usr/bin/env python3
-"""Random maze generator (recursive backtracker)."""
-import sys, random
+"""maze_gen - Generate and solve mazes."""
+import argparse, random, sys
+from collections import deque
 
 def generate(w, h, seed=None):
     if seed is not None: random.seed(seed)
     grid = [[0]*w for _ in range(h)]
     visited = [[False]*w for _ in range(h)]
     dirs = [(0,-1,1),(0,1,4),(1,0,8),(-1,0,2)]  # dx,dy,wall
-
-    def carve(x, y):
+    opp = {1:4,4:1,8:2,2:8}
+    def dfs(x, y):
         visited[y][x] = True
-        ds = list(dirs)
-        random.shuffle(ds)
-        for dx, dy, wall in ds:
+        random.shuffle(dirs)
+        for dx, dy, wall in dirs:
             nx, ny = x+dx, y+dy
-            if 0 <= nx < w and 0 <= ny < h and not visited[ny][nx]:
+            if 0<=nx<w and 0<=ny<h and not visited[ny][nx]:
                 grid[y][x] |= wall
-                opp = {1:4,4:1,2:8,8:2}
                 grid[ny][nx] |= opp[wall]
-                carve(nx, ny)
-
-    carve(0, 0)
+                dfs(nx, ny)
+    dfs(0, 0)
     return grid
 
-def render(grid):
-    h, w = len(grid), len(grid[0])
+def render(grid, w, h, path=None):
+    path_set = set(path) if path else set()
     lines = []
-    lines.append('┌' + '┬'.join('───' for _ in range(w)) + '┐')
     for y in range(h):
-        row = '│'
+        top = ""; mid = ""
         for x in range(w):
-            row += '   '
-            row += ' ' if grid[y][x] & 8 else '│'
-        lines.append(row)
-        if y < h-1:
-            sep = '├'
-            for x in range(w):
-                sep += '   ' if grid[y][x] & 4 else '───'
-                sep += '┼' if x < w-1 else '┤'
-            lines.append(sep)
-    lines.append('└' + '┴'.join('───' for _ in range(w)) + '┘')
-    return '\n'.join(lines)
+            top += "+" + ("   " if grid[y][x] & 1 else "---")
+            ch = " * " if (x,y) in path_set else "   "
+            mid += ((" " if grid[y][x] & 2 else "|") + ch)
+        top += "+"; mid += "|"
+        lines.extend([top, mid])
+    lines.append("+" + "---+" * w)
+    return "\n".join(lines)
 
-if __name__ == '__main__':
-    import argparse
-    p = argparse.ArgumentParser()
-    p.add_argument('-W', '--width', type=int, default=10)
-    p.add_argument('-H', '--height', type=int, default=10)
-    p.add_argument('-s', '--seed', type=int)
-    args = p.parse_args()
-    print(render(generate(args.width, args.height, args.seed)))
+def solve(grid, w, h):
+    q = deque([(0,0,[(0,0)])])
+    visited = {(0,0)}
+    dirs = [(0,-1,1),(0,1,4),(1,0,8),(-1,0,2)]
+    while q:
+        x, y, path = q.popleft()
+        if x == w-1 and y == h-1: return path
+        for dx, dy, wall in dirs:
+            if grid[y][x] & wall:
+                nx, ny = x+dx, y+dy
+                if (nx,ny) not in visited:
+                    visited.add((nx,ny))
+                    q.append((nx,ny,path+[(nx,ny)]))
+    return []
+
+def main():
+    p = argparse.ArgumentParser(description="Maze generator & solver")
+    p.add_argument("-W","--width",type=int,default=15)
+    p.add_argument("-H","--height",type=int,default=10)
+    p.add_argument("-s","--seed",type=int)
+    p.add_argument("--solve",action="store_true")
+    a = p.parse_args()
+    grid = generate(a.width, a.height, a.seed)
+    path = solve(grid, a.width, a.height) if a.solve else None
+    print(render(grid, a.width, a.height, path))
+
+if __name__ == "__main__": main()
