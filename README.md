@@ -1,11 +1,10 @@
 # maze-gen
 
-Maze generation (DFS, Kruskal) and solving (BFS, A*).
+Single-file Python CLI. Zero dependencies.
 
 ## Usage
 
 ```bash
+python3 maze_gen.py
 python3 maze_gen.py test
 ```
-
-Zero dependencies. Python 3.8+.
