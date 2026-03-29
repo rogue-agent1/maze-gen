@@ -1,74 +1,62 @@
 #!/usr/bin/env python3
-"""maze_gen - Random maze generator and solver."""
-import sys, argparse, json, random
+"""Maze Generator - Generate and solve mazes with multiple algorithms."""
+import sys, random
 from collections import deque
 
-def generate(w, h, seed=None):
-    if seed: random.seed(seed)
-    maze = [[1]*(2*w+1) for _ in range(2*h+1)]
-    for y in range(h):
-        for x in range(w):
-            maze[2*y+1][2*x+1] = 0
-    visited = set(); stack = [(0,0)]
-    visited.add((0,0))
+def generate_dfs(rows, cols, seed=None):
+    if seed is not None: random.seed(seed)
+    maze = [[1]*(2*cols+1) for _ in range(2*rows+1)]
+    for r in range(rows):
+        for c in range(cols): maze[2*r+1][2*c+1] = 0
+    visited = set(); stack = [(0, 0)]; visited.add((0, 0))
     while stack:
-        x, y = stack[-1]
+        r, c = stack[-1]
         neighbors = []
-        for dx, dy in [(0,-1),(1,0),(0,1),(-1,0)]:
-            nx, ny = x+dx, y+dy
-            if 0<=nx<w and 0<=ny<h and (nx,ny) not in visited:
-                neighbors.append((nx,ny,dx,dy))
+        for dr, dc in [(-1,0),(1,0),(0,-1),(0,1)]:
+            nr, nc = r+dr, c+dc
+            if 0 <= nr < rows and 0 <= nc < cols and (nr,nc) not in visited:
+                neighbors.append((nr, nc, dr, dc))
         if neighbors:
-            nx,ny,dx,dy = random.choice(neighbors)
-            maze[2*y+1+dy][2*x+1+dx] = 0
-            visited.add((nx,ny))
-            stack.append((nx,ny))
-        else:
-            stack.pop()
-    maze[1][0] = 0; maze[2*h-1][2*w] = 0
+            nr, nc, dr, dc = random.choice(neighbors)
+            maze[2*r+1+dr][2*c+1+dc] = 0
+            visited.add((nr, nc)); stack.append((nr, nc))
+        else: stack.pop()
     return maze
 
-def solve(maze):
-    h, w = len(maze), len(maze[0])
-    start = (0, 1); end = (w-1, h-2)
-    queue = deque([(start, [start])])
-    visited = {start}
+def solve_bfs(maze):
+    rows, cols = len(maze), len(maze[0])
+    start = (1, 1); end = (rows-2, cols-2)
+    queue = deque([(start, [start])]); visited = {start}
     while queue:
-        (x,y), path = queue.popleft()
-        if (x,y) == end: return path
-        for dx,dy in [(0,-1),(1,0),(0,1),(-1,0)]:
-            nx, ny = x+dx, y+dy
-            if 0<=nx<w and 0<=ny<h and maze[ny][nx]==0 and (nx,ny) not in visited:
-                visited.add((nx,ny))
-                queue.append(((nx,ny), path+[(nx,ny)]))
-    return []
+        (r, c), path = queue.popleft()
+        if (r, c) == end: return path
+        for dr, dc in [(-1,0),(1,0),(0,-1),(0,1)]:
+            nr, nc = r+dr, c+dc
+            if 0 <= nr < rows and 0 <= nc < cols and maze[nr][nc] == 0 and (nr,nc) not in visited:
+                visited.add((nr,nc)); queue.append(((nr,nc), path + [(nr,nc)]))
+    return None
 
 def render(maze, path=None):
     path_set = set(path) if path else set()
     lines = []
-    for y, row in enumerate(maze):
+    for r, row in enumerate(maze):
         line = ""
-        for x, cell in enumerate(row):
-            if (x,y) in path_set: line += "·"
+        for c, cell in enumerate(row):
+            if (r,c) in path_set: line += "·"
             elif cell == 1: line += "█"
             else: line += " "
         lines.append(line)
-    return "
-".join(lines)
+    return "\n".join(lines)
 
 def main():
-    p = argparse.ArgumentParser(description="Maze generator")
-    p.add_argument("width", type=int, nargs="?", default=10)
-    p.add_argument("height", type=int, nargs="?", default=10)
-    p.add_argument("--seed", type=int)
-    p.add_argument("--solve", action="store_true")
-    p.add_argument("--json", action="store_true")
-    args = p.parse_args()
-    maze = generate(args.width, args.height, args.seed)
-    path = solve(maze) if args.solve else None
-    if args.json:
-        print(json.dumps({"width": args.width, "height": args.height, "path_length": len(path) if path else 0}))
-    else:
-        print(render(maze, path))
+    rows = int(sys.argv[1]) if len(sys.argv) > 1 else 12
+    cols = int(sys.argv[2]) if len(sys.argv) > 2 else 20
+    seed = int(sys.argv[3]) if len(sys.argv) > 3 else 42
+    maze = generate_dfs(rows, cols, seed)
+    path = solve_bfs(maze)
+    print(f"=== Maze ({rows}x{cols}) ===\n")
+    print(render(maze, path))
+    print(f"\nPath length: {len(path) if path else 'no solution'}")
 
-if __name__ == "__main__": main()
+if __name__ == "__main__":
+    main()

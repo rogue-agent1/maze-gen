@@ -1,6 +1,6 @@
 # maze-gen
 
-Maze generator and solver
+Maze Generator and Solver. Zero-dependency, single-file Python CLI.
 
 ## Usage
 
@@ -8,7 +8,6 @@ Maze generator and solver
 python3 maze_gen.py --help
 ```
 
-## Features
+## License
 
-- Zero dependencies (Python 3.8+)
-- Single file implementation
+MIT
