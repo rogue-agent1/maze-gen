@@ -1,11 +1,9 @@
-# maze-gen
+# Maze Generator & Solver
 
-Generate and solve random mazes.
-
-Zero dependencies. Python 3.8+.
+Maze Generator & Solver — zero-dependency Python implementation.
 
 ## Usage
 
 ```bash
-python3 maze_gen.py --help
+python3 maze_gen.py
 ```

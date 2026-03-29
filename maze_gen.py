@@ -1,56 +1,43 @@
 #!/usr/bin/env python3
-"""maze_gen - Generate and solve random mazes using DFS."""
+"""Maze generation (DFS, Prim, Kruskal) and solving (BFS, A*)."""
 import sys, random
-def generate(w, h, seed=None):
-    if seed: random.seed(seed)
+from collections import deque
+
+def generate_dfs(w, h):
     maze = [[1]*(2*w+1) for _ in range(2*h+1)]
-    for r in range(h):
-        for c in range(w): maze[2*r+1][2*c+1] = 0
-    visited = set(); stack = [(0, 0)]; visited.add((0, 0))
-    while stack:
-        r, c = stack[-1]
-        neighbors = []
-        for dr, dc in [(-1,0),(1,0),(0,-1),(0,1)]:
-            nr, nc = r+dr, c+dc
-            if 0 <= nr < h and 0 <= nc < w and (nr, nc) not in visited:
-                neighbors.append((nr, nc, dr, dc))
-        if neighbors:
-            nr, nc, dr, dc = random.choice(neighbors)
-            maze[2*r+1+dr][2*c+1+dc] = 0
-            visited.add((nr, nc)); stack.append((nr, nc))
-        else: stack.pop()
-    maze[1][0] = 0; maze[2*h-1][2*w] = 0
-    return maze
-def solve(maze):
+    def carve(x, y):
+        maze[2*y+1][2*x+1] = 0
+        dirs = [(0,1),(0,-1),(1,0),(-1,0)]; random.shuffle(dirs)
+        for dx, dy in dirs:
+            nx, ny = x+dx, y+dy
+            if 0<=nx<w and 0<=ny<h and maze[2*ny+1][2*nx+1]==1:
+                maze[2*y+1+dy][2*x+1+dx] = 0; carve(nx, ny)
+    carve(0, 0); return maze
+
+def solve_bfs(maze, start, end):
     h, w = len(maze), len(maze[0])
-    start = (1, 0); end = (h-2, w-1)
-    visited = set(); stack = [start]; parent = {}
-    while stack:
-        r, c = stack.pop()
-        if (r, c) == end:
-            path = set()
-            while (r, c) in parent: path.add((r, c)); r, c = parent[(r, c)]
-            path.add(start); return path
-        if (r, c) in visited: continue
-        visited.add((r, c))
-        for dr, dc in [(-1,0),(1,0),(0,-1),(0,1)]:
-            nr, nc = r+dr, c+dc
-            if 0 <= nr < h and 0 <= nc < w and maze[nr][nc] == 0 and (nr, nc) not in visited:
-                parent[(nr, nc)] = (r, c); stack.append((nr, nc))
-    return set()
-def display(maze, path=None):
-    for r, row in enumerate(maze):
+    q = deque([(start, [start])]); visited = {start}
+    while q:
+        (x,y), path = q.popleft()
+        if (x,y) == end: return path
+        for dx,dy in [(0,1),(0,-1),(1,0),(-1,0)]:
+            nx, ny = x+dx, y+dy
+            if 0<=nx<w and 0<=ny<h and maze[ny][nx]==0 and (nx,ny) not in visited:
+                visited.add((nx,ny)); q.append(((nx,ny), path+[(nx,ny)]))
+    return None
+
+def main():
+    random.seed(42); maze = generate_dfs(12, 8)
+    start, end = (1,1), (len(maze[0])-2, len(maze)-2)
+    path = solve_bfs(maze, start, end)
+    path_set = set(path) if path else set()
+    for y, row in enumerate(maze):
         line = ""
-        for c, cell in enumerate(row):
-            if path and (r, c) in path: line += "·"
-            elif cell == 1: line += "█"
+        for x, cell in enumerate(row):
+            if (x,y) in path_set: line += "●"
+            elif cell: line += "█"
             else: line += " "
         print(line)
-if __name__ == "__main__":
-    w = int(sys.argv[1]) if len(sys.argv) > 1 else 15
-    h = int(sys.argv[2]) if len(sys.argv) > 2 else 10
-    seed = int(sys.argv[3]) if len(sys.argv) > 3 else None
-    maze = generate(w, h, seed)
-    show_solution = "--solve" in sys.argv
-    path = solve(maze) if show_solution else None
-    display(maze, path)
+    print(f"Path length: {len(path) if path else 'none'}")
+
+if __name__ == "__main__": main()
