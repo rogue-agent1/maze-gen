@@ -1,9 +1,14 @@
-# Maze Generator & Solver
+# maze-gen
 
-Maze Generator & Solver — zero-dependency Python implementation.
+Maze generator and solver
 
 ## Usage
 
 ```bash
-python3 maze_gen.py
+python3 maze_gen.py --help
 ```
+
+## Features
+
+- Zero dependencies (Python 3.8+)
+- Single file implementation
