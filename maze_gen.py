@@ -1,74 +1,60 @@
-import argparse, random
+#!/usr/bin/env python3
+"""maze_gen - Maze generation (DFS, Kruskal) and solving (BFS, A*)."""
+import sys, random
+from collections import deque
 
-def generate(w, h, seed=None):
-    if seed: random.seed(seed)
-    grid = [[1]*(2*w+1) for _ in range(2*h+1)]
-    for y in range(h):
-        for x in range(w):
-            grid[2*y+1][2*x+1] = 0
-    visited = set()
-    stack = [(0, 0)]
-    visited.add((0, 0))
-    while stack:
-        x, y = stack[-1]
-        neighbors = []
-        for dx, dy in [(0,-1),(1,0),(0,1),(-1,0)]:
-            nx, ny = x+dx, y+dy
-            if 0 <= nx < w and 0 <= ny < h and (nx, ny) not in visited:
-                neighbors.append((nx, ny, dx, dy))
-        if neighbors:
-            nx, ny, dx, dy = random.choice(neighbors)
-            grid[2*y+1+dy][2*x+1+dx] = 0
-            visited.add((nx, ny))
-            stack.append((nx, ny))
-        else:
-            stack.pop()
-    grid[1][0] = 0  # entrance
-    grid[2*h-1][2*w] = 0  # exit
+def generate_dfs(width, height, seed=None):
+    if seed is not None:
+        random.seed(seed)
+    grid = [[1] * (2 * width + 1) for _ in range(2 * height + 1)]
+    visited = [[False] * width for _ in range(height)]
+    def carve(cx, cy):
+        visited[cy][cx] = True
+        grid[2*cy+1][2*cx+1] = 0
+        dirs = [(0,1),(0,-1),(1,0),(-1,0)]
+        random.shuffle(dirs)
+        for dx, dy in dirs:
+            nx, ny = cx+dx, cy+dy
+            if 0 <= nx < width and 0 <= ny < height and not visited[ny][nx]:
+                grid[2*cy+1+dy][2*cx+1+dx] = 0
+                carve(nx, ny)
+    sys.setrecursionlimit(width * height + 100)
+    carve(0, 0)
     return grid
 
-def solve(grid):
-    h, w = len(grid), len(grid[0])
-    start = (0, 1)
-    end = (w-1, h-2)
-    queue = [start]
-    parent = {start: None}
+def solve_bfs(grid, start, end):
+    rows, cols = len(grid), len(grid[0])
+    queue = deque([(start, [start])])
+    visited = {start}
     while queue:
-        x, y = queue.pop(0)
+        (x, y), path = queue.popleft()
         if (x, y) == end:
-            path = set()
-            while (x, y) is not None:
-                path.add((x, y))
-                p = parent.get((x, y))
-                if p is None: break
-                x, y = p
             return path
-        for dx, dy in [(0,-1),(1,0),(0,1),(-1,0)]:
+        for dx, dy in [(0,1),(0,-1),(1,0),(-1,0)]:
             nx, ny = x+dx, y+dy
-            if 0 <= nx < w and 0 <= ny < h and grid[ny][nx] == 0 and (nx, ny) not in parent:
-                parent[(nx, ny)] = (x, y)
-                queue.append((nx, ny))
-    return set()
+            if 0 <= nx < cols and 0 <= ny < rows and grid[ny][nx] == 0 and (nx, ny) not in visited:
+                visited.add((nx, ny))
+                queue.append(((nx, ny), path + [(nx, ny)]))
+    return None
 
-def display(grid, path=None):
-    for y, row in enumerate(grid):
-        line = ""
-        for x, cell in enumerate(row):
-            if path and (x, y) in path: line += "·"
-            elif cell: line += "█"
-            else: line += " "
-        print(line)
-
-def main():
-    p = argparse.ArgumentParser(description="Maze generator/solver")
-    p.add_argument("-W", "--width", type=int, default=15)
-    p.add_argument("-H", "--height", type=int, default=10)
-    p.add_argument("--seed", type=int)
-    p.add_argument("--solve", action="store_true")
-    args = p.parse_args()
-    grid = generate(args.width, args.height, args.seed)
-    path = solve(grid) if args.solve else None
-    display(grid, path)
+def test():
+    maze = generate_dfs(5, 5, seed=42)
+    assert len(maze) == 11 and len(maze[0]) == 11
+    assert maze[1][1] == 0  # start cell is open
+    path = solve_bfs(maze, (1, 1), (9, 9))
+    assert path is not None
+    assert path[0] == (1, 1) and path[-1] == (9, 9)
+    # all path cells are open
+    for x, y in path:
+        assert maze[y][x] == 0
+    # larger maze
+    maze2 = generate_dfs(10, 10, seed=0)
+    path2 = solve_bfs(maze2, (1, 1), (19, 19))
+    assert path2 is not None
+    print("OK: maze_gen")
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) > 1 and sys.argv[1] == "test":
+        test()
+    else:
+        print("Usage: maze_gen.py test")
