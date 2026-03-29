@@ -1,62 +1,74 @@
-#!/usr/bin/env python3
-"""Maze Generator - Generate and solve mazes with multiple algorithms."""
-import sys, random
-from collections import deque
+import argparse, random
 
-def generate_dfs(rows, cols, seed=None):
-    if seed is not None: random.seed(seed)
-    maze = [[1]*(2*cols+1) for _ in range(2*rows+1)]
-    for r in range(rows):
-        for c in range(cols): maze[2*r+1][2*c+1] = 0
-    visited = set(); stack = [(0, 0)]; visited.add((0, 0))
+def generate(w, h, seed=None):
+    if seed: random.seed(seed)
+    grid = [[1]*(2*w+1) for _ in range(2*h+1)]
+    for y in range(h):
+        for x in range(w):
+            grid[2*y+1][2*x+1] = 0
+    visited = set()
+    stack = [(0, 0)]
+    visited.add((0, 0))
     while stack:
-        r, c = stack[-1]
+        x, y = stack[-1]
         neighbors = []
-        for dr, dc in [(-1,0),(1,0),(0,-1),(0,1)]:
-            nr, nc = r+dr, c+dc
-            if 0 <= nr < rows and 0 <= nc < cols and (nr,nc) not in visited:
-                neighbors.append((nr, nc, dr, dc))
+        for dx, dy in [(0,-1),(1,0),(0,1),(-1,0)]:
+            nx, ny = x+dx, y+dy
+            if 0 <= nx < w and 0 <= ny < h and (nx, ny) not in visited:
+                neighbors.append((nx, ny, dx, dy))
         if neighbors:
-            nr, nc, dr, dc = random.choice(neighbors)
-            maze[2*r+1+dr][2*c+1+dc] = 0
-            visited.add((nr, nc)); stack.append((nr, nc))
-        else: stack.pop()
-    return maze
+            nx, ny, dx, dy = random.choice(neighbors)
+            grid[2*y+1+dy][2*x+1+dx] = 0
+            visited.add((nx, ny))
+            stack.append((nx, ny))
+        else:
+            stack.pop()
+    grid[1][0] = 0  # entrance
+    grid[2*h-1][2*w] = 0  # exit
+    return grid
 
-def solve_bfs(maze):
-    rows, cols = len(maze), len(maze[0])
-    start = (1, 1); end = (rows-2, cols-2)
-    queue = deque([(start, [start])]); visited = {start}
+def solve(grid):
+    h, w = len(grid), len(grid[0])
+    start = (0, 1)
+    end = (w-1, h-2)
+    queue = [start]
+    parent = {start: None}
     while queue:
-        (r, c), path = queue.popleft()
-        if (r, c) == end: return path
-        for dr, dc in [(-1,0),(1,0),(0,-1),(0,1)]:
-            nr, nc = r+dr, c+dc
-            if 0 <= nr < rows and 0 <= nc < cols and maze[nr][nc] == 0 and (nr,nc) not in visited:
-                visited.add((nr,nc)); queue.append(((nr,nc), path + [(nr,nc)]))
-    return None
+        x, y = queue.pop(0)
+        if (x, y) == end:
+            path = set()
+            while (x, y) is not None:
+                path.add((x, y))
+                p = parent.get((x, y))
+                if p is None: break
+                x, y = p
+            return path
+        for dx, dy in [(0,-1),(1,0),(0,1),(-1,0)]:
+            nx, ny = x+dx, y+dy
+            if 0 <= nx < w and 0 <= ny < h and grid[ny][nx] == 0 and (nx, ny) not in parent:
+                parent[(nx, ny)] = (x, y)
+                queue.append((nx, ny))
+    return set()
 
-def render(maze, path=None):
-    path_set = set(path) if path else set()
-    lines = []
-    for r, row in enumerate(maze):
+def display(grid, path=None):
+    for y, row in enumerate(grid):
         line = ""
-        for c, cell in enumerate(row):
-            if (r,c) in path_set: line += "·"
-            elif cell == 1: line += "█"
+        for x, cell in enumerate(row):
+            if path and (x, y) in path: line += "·"
+            elif cell: line += "█"
             else: line += " "
-        lines.append(line)
-    return "\n".join(lines)
+        print(line)
 
 def main():
-    rows = int(sys.argv[1]) if len(sys.argv) > 1 else 12
-    cols = int(sys.argv[2]) if len(sys.argv) > 2 else 20
-    seed = int(sys.argv[3]) if len(sys.argv) > 3 else 42
-    maze = generate_dfs(rows, cols, seed)
-    path = solve_bfs(maze)
-    print(f"=== Maze ({rows}x{cols}) ===\n")
-    print(render(maze, path))
-    print(f"\nPath length: {len(path) if path else 'no solution'}")
+    p = argparse.ArgumentParser(description="Maze generator/solver")
+    p.add_argument("-W", "--width", type=int, default=15)
+    p.add_argument("-H", "--height", type=int, default=10)
+    p.add_argument("--seed", type=int)
+    p.add_argument("--solve", action="store_true")
+    args = p.parse_args()
+    grid = generate(args.width, args.height, args.seed)
+    path = solve(grid) if args.solve else None
+    display(grid, path)
 
 if __name__ == "__main__":
     main()
